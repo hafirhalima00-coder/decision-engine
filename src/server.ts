@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
 import { DecisionEngineCore } from './core/engine';
+import { genId } from './core/uuid';
 import { Action, Context } from './core/types';
 
 const app = express();
@@ -21,7 +22,7 @@ app.post('/api/decision', async (req: Request, res: Response) => {
 
     const actionWithTimestamp: Action = {
       ...action,
-      id: action.id || require('uuid').v4(),
+      id: action.id || genId(),
       timestamp: new Date()
     };
 

@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { genId } from './uuid';
 import { DecisionResult, AuditEntry } from './types';
 
 export class AuditTrail {
@@ -68,7 +68,7 @@ export class AuditTrail {
     reasoning: string,
     auditEntries: AuditEntry[]
   ): DecisionResult {
-    const id = uuidv4();
+    const id = genId();
     
     const updatedAuditEntries = auditEntries.map(entry => ({
       ...entry,

@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { genId } from './uuid';
 import { Decision, Signals, Action, AuditEntry } from './types';
 
 export class DecisionEngine {
@@ -116,7 +116,7 @@ export class DecisionEngine {
 
   private addAuditEntry(step: string, input: unknown, output: unknown, reasoning: string): void {
     this.auditTrail.push({
-      id: uuidv4(),
+      id: genId(),
       decisionId: '',
       step,
       input,
