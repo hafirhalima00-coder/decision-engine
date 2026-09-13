@@ -1,0 +1,37 @@
+{
+  "name": "decision-engine",
+  "version": "1.0.0",
+  "description": "AI Decision Engine - Knows when it is allowed to act",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/main.js",
+    "dev": "tsx src/main.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "vercel-build": "tsc"
+  },
+  "keywords": [
+    "ai",
+    "decision-engine",
+    "risk-assessment",
+    "audit-trail"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1",
+    "tsx": "^4.23.13",
+    "uuid": "^14.0.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.2",
+    "@types/uuid": "^10.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

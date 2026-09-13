@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Decision Engine</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f0f0f; color: #e0e0e0; min-height: 100vh; }
+    
+    .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+    
+    header { text-align: center; margin-bottom: 3rem; }
+    h1 { font-size: 2.5rem; color: #fff; margin-bottom: 0.5rem; }
+    .subtitle { color: #888; font-size: 1.1rem; }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+    
+    .panel { background: #1a1a1a; border-radius: 12px; padding: 1.5rem; border: 1px solid #333; }
+    .panel h2 { color: #fff; margin-bottom: 1rem; font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; }
+    .panel h2 .icon { font-size: 1.4rem; }
+    
+    label { display: block; color: #aaa; font-size: 0.85rem; margin-bottom: 0.3rem; margin-top: 0.8rem; }
+    select, input, textarea { width: 100%; padding: 0.6rem 0.8rem; background: #252525; border: 1px solid #444; border-radius: 6px; color: #fff; font-size: 0.9rem; }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: #6366f1; }
+    textarea { resize: vertical; min-height: 60px; }
+    
+    .row { display: flex; gap: 1rem; }
+    .row > * { flex: 1; }
+    
+    button { width: 100%; padding: 0.8rem; background: #6366f1; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; margin-top: 1.2rem; transition: background 0.2s; }
+    button:hover { background: #5558e6; }
+    button:disabled { background: #333; cursor: not-allowed; }
+    
+    .result-panel { grid-column: 1 / -1; }
+    
+    .decision-badge { display: inline-block; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 700; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    .decision-execute { background: #166534; color: #4ade80; }
+    .decision-ask { background: #1e3a5f; color: #60a5fa; }
+    .decision-defer { background: #713f12; color: #fbbf24; }
+    .decision-escalate { background: #581c87; color: #c084fc; }
+    .decision-refuse { background: #7f1d1d; color: #f87171; }
+    
+    .signals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-top: 1rem; }
+    .signal-card { background: #252525; padding: 1rem; border-radius: 8px; text-align: center; }
+    .signal-value { font-size: 1.5rem; font-weight: 700; margin: 0.3rem 0; }
+    .signal-label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    .bar-track { height: 6px; background: #333; border-radius: 3px; margin-top: 0.4rem; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+    
+    .reasoning { background: #252525; padding: 1rem; border-radius: 8px; margin-top: 1rem; white-space: pre-wrap; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.85rem; line-height: 1.6; color: #ccc; max-height: 300px; overflow-y: auto; }
+    
+    .audit-list { margin-top: 1rem; max-height: 400px; overflow-y: auto; }
+    .audit-item { background: #252525; padding: 0.8rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; border-left: 3px solid #6366f1; }
+    .audit-step { font-weight: 600; color: #a5b4fc; font-size: 0.85rem; }
+    .audit-reasoning { color: #888; font-size: 0.8rem; margin-top: 0.2rem; }
+    
+    .history-panel { grid-column: 1 / -1; }
+    .history-list { max-height: 300px; overflow-y: auto; }
+    .history-item { display: flex; align-items: center; gap: 1rem; padding: 0.8rem; background: #252525; border-radius: 6px; margin-bottom: 0.5rem; cursor: pointer; transition: background 0.2s; }
+    .history-item:hover { background: #2a2a2a; }
+    .history-domain { color: #888; font-size: 0.8rem; min-width: 120px; }
+    .history-action { color: #ccc; flex: 1; font-size: 0.9rem; }
+    .history-time { color: #666; font-size: 0.75rem; }
+    
+    .empty-state { text-align: center; color: #555; padding: 3rem; }
+    
+    .loader { display: inline-block; width: 1rem; height: 1rem; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 0.5rem; vertical-align: middle; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .risk-low { color: #4ade80; }
+    .risk-medium { color: #fbbf24; }
+    .risk-high { color: #fb923c; }
+    .risk-critical { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>The Decision Engine</h1>
+      <p class="subtitle">AI that knows when it is allowed to act</p>
+    </header>
+
+    <div class="grid">
+      <div class="panel">
+        <h2><span class="icon">action</span> Proposed Action</h2>
+        <label>Domain</label>
+        <select id="domain">
+          <option value="ticket-triage">Ticket Triage</option>
+          <option value="refund-approval">Refund Approval</option>
+          <option value="code-deploy">Code Deploy</option>
+          <option value="content-moderation">Content Moderation</option>
+        </select>
+        <label>Action Type</label>
+        <input type="text" id="actionType" placeholder="e.g. refund, deploy, escalate, ban">
+        <label>Description</label>
+        <textarea id="actionDesc" placeholder="What is being requested?"></textarea>
+        <div class="row">
+          <div>
+            <label>Requested By</label>
+            <input type="text" id="requestedBy" placeholder="user ID or role">
+          </div>
+          <div>
+            <label>Urgency</label>
+            <select id="urgency">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
+          </div>
+        </div>
+
+        <h2 style="margin-top:1.5rem"><span class="icon">person</span> User Context</h2>
+        <div class="row">
+          <div>
+            <label>User Role</label>
+            <select id="userRole">
+              <option value="viewer">Viewer</option>
+              <option value="support">Support</option>
+              <option value="admin" selected>Admin</option>
+              <option value="superadmin">Super Admin</option>
+            </select>
+          </div>
+          <div>
+            <label>Trust Score (0-1)</label>
+            <input type="number" id="trustScore" value="0.7" min="0" max="1" step="0.1">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Past Actions</label>
+            <input type="number" id="pastActions" value="25" min="0">
+          </div>
+          <div>
+            <label>Success Rate</label>
+            <input type="number" id="successRate" value="0.92" min="0" max="1" step="0.01">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>Violations</label>
+            <input type="number" id="violations" value="0" min="0">
+          </div>
+          <div>
+            <label>Active Incidents</label>
+            <input type="number" id="incidents" value="0" min="0">
+          </div>
+        </div>
+
+        <button id="decideBtn" onclick="runDecision()">Make Decision</button>
+      </div>
+
+      <div class="panel" id="resultPanel" style="display:none;">
+        <h2><span class="icon">gavel</span> Decision</h2>
+        <div id="decisionBadge"></div>
+        <div class="signals-grid" id="signalsGrid"></div>
+        <h2 style="margin-top:1.5rem"><span class="icon">reasoning</span> Reasoning</h2>
+        <div class="reasoning" id="reasoning"></div>
+        <h2 style="margin-top:1.5rem"><span class="icon">audit</span> Audit Trail</h2>
+        <div class="audit-list" id="auditList"></div>
+      </div>
+
+      <div class="panel history-panel" id="historyPanel">
+        <h2><span class="icon">history</span> Decision History</h2>
+        <div class="history-list" id="historyList">
+          <div class="empty-state">No decisions yet. Run your first decision above.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const allDecisions = [];
+
+    async function runDecision() {
+      const btn = document.getElementById('decideBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader"></span> Analyzing...';
+
+      const domain = document.getElementById('domain').value;
+      const actionType = document.getElementById('actionType').value || 'general';
+      const description = document.getElementById('actionDesc').value || 'No description provided';
+      const requestedBy = document.getElementById('requestedBy').value || 'anonymous';
+      const urgency = document.getElementById('urgency').value;
+
+      const trustScore = parseFloat(document.getElementById('trustScore').value) || 0.7;
+      const pastActions = parseInt(document.getElementById('pastActions').value) || 0;
+      const successRate = parseFloat(document.getElementById('successRate').value) || 0.5;
+      const violations = parseInt(document.getElementById('violations').value) || 0;
+      const incidents = parseInt(document.getElementById('incidents').value) || 0;
+
+      const action = {
+        type: actionType,
+        domain,
+        description,
+        parameters: { urgency, description, requestedBy },
+        requestedBy
+      };
+
+      const context = {
+        userRole: document.getElementById('userRole').value,
+        userHistory: { previousActions: pastActions, successRate, violations, trustScore },
+        environment: { timeOfDay: new Date().getHours().toString(), dayOfWeek: new Date().toLocaleDateString('en', {weekday:'long'}), systemLoad: 0.5, activeIncidents: incidents },
+        policies: [{ id: 'p1', name: 'default', condition: actionType, action: 'defer', priority: 1 }],
+        evidence: [{ type: 'user_input', source: 'form', value: description, confidence: 0.7, timestamp: new Date() }]
+      };
+
+      try {
+        const res = await fetch('/api/decision', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, context })
+        });
+        const result = await res.json();
+        displayResult(result);
+        allDecisions.unshift(result);
+        updateHistory();
+      } catch (e) {
+        alert('Error: ' + e.message);
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = 'Make Decision';
+    }
+
+    function displayResult(result) {
+      document.getElementById('resultPanel').style.display = 'block';
+
+      const badge = document.getElementById('decisionBadge');
+      badge.innerHTML = `<span class="decision-badge decision-${result.decision}">${result.decision}</span>`;
+
+      const grid = document.getElementById('signalsGrid');
+      const s = result.signals;
+      grid.innerHTML = `
+        <div class="signal-card">
+          <div class="signal-label">Confidence</div>
+          <div class="signal-value">${(s.confidence*100).toFixed(0)}%</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${s.confidence*100}%;background:#6366f1"></div></div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-label">Risk Score</div>
+          <div class="signal-value risk-${s.riskLevel}">${(s.riskScore*100).toFixed(0)}%</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${s.riskScore*100}%;background:${s.riskLevel==='low'?'#4ade80':s.riskLevel==='medium'?'#fbbf24':s.riskLevel==='high'?'#fb923c':'#f87171'}"></div></div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-label">Reversibility</div>
+          <div class="signal-value">${(s.reversibility*100).toFixed(0)}%</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${s.reversibility*100}%;background:#22d3ee"></div></div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-label">Evidence</div>
+          <div class="signal-value">${(s.evidenceStrength*100).toFixed(0)}%</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${s.evidenceStrength*100}%;background:#a78bfa"></div></div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-label">Policy Align</div>
+          <div class="signal-value">${(s.policyAlignment*100).toFixed(0)}%</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${s.policyAlignment*100}%;background:#34d399"></div></div>
+        </div>
+        <div class="signal-card">
+          <div class="signal-label">User Trust</div>
+          <div class="signal-value">${(s.userTrustScore*100).toFixed(0)}%</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${s.userTrustScore*100}%;background:#f472b6"></div></div>
+        </div>
+      `;
+
+      document.getElementById('reasoning').textContent = result.reasoning;
+
+      const auditList = document.getElementById('auditList');
+      auditList.innerHTML = result.auditTrail.map(a => `
+        <div class="audit-item">
+          <div class="audit-step">${a.step}</div>
+          <div class="audit-reasoning">${a.reasoning}</div>
+        </div>
+      `).join('');
+    }
+
+    function updateHistory() {
+      const list = document.getElementById('historyList');
+      if (allDecisions.length === 0) {
+        list.innerHTML = '<div class="empty-state">No decisions yet.</div>';
+        return;
+      }
+      list.innerHTML = allDecisions.map(d => `
+        <div class="history-item" onclick='displayResult(${JSON.stringify(d).replace(/'/g, "\\'")})'>
+          <span class="decision-badge decision-${d.decision}" style="font-size:0.7rem;padding:0.2rem 0.6rem;">${d.decision}</span>
+          <span class="history-domain">${d.action.domain}</span>
+          <span class="history-action">${d.action.description || d.action.type}</span>
+          <span class="history-time">${new Date(d.timestamp).toLocaleTimeString()}</span>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('domain').addEventListener('change', function() {
+      const presets = {
+        'ticket-triage': { type: 'escalate', desc: 'Escalate priority support ticket for enterprise customer reporting data loss' },
+        'refund-approval': { type: 'refund', desc: 'Process $349 refund for defective product reported within 14-day window' },
+        'code-deploy': { type: 'deploy', desc: 'Deploy hotfix to production for critical authentication bug' },
+        'content-moderation': { type: 'ban', desc: 'Ban user for repeated hate speech violations across multiple posts' }
+      };
+      const p = presets[this.value];
+      if (p) {
+        document.getElementById('actionType').value = p.type;
+        document.getElementById('actionDesc').value = p.desc;
+      }
+    });
+
+    document.getElementById('domain').dispatchEvent(new Event('change'));
+  </script>
+</body>
+</html>
