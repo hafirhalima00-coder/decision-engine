@@ -84,11 +84,15 @@ Manages deployment decisions based on environment, change size, test coverage, a
 ### 4. Content Moderation
 Handles content moderation decisions based on violation type, user reports, and confidence scores.
 
+## Live Demo
+
+**https://miss2.vercel.app** — interactive demo with all 4 domains wired in.
+
 ## Quick Start
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/decision-engine.git
+git clone https://github.com/hafirhalima00-coder/decision-engine.git
 cd decision-engine
 
 # Install dependencies
